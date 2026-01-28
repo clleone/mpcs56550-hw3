@@ -1,0 +1,74 @@
+services:
+  web:
+    build: .
+    ports:
+      - "5000:5000"
+    environment:
+      - DB_HOST=db
+      - DB_NAME=accounts
+      - DB_USER=acctuser
+      - DB_PASSWORD=acctpass
+      - SECRET_KEY=forsessions
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: mysql:8.0
+    environment:
+      - MYSQL_ROOT_PASSWORD=rootpass
+      - MYSQL_DATABASE=accounts
+      - MYSQL_USER=acctuser
+      - MYSQL_PASSWORD=acctpass
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  mysql_data:
+
+
+    # networks:
+    #   - frontend
+    #   - backend
+    # healthcheck:
+    #   test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/health')"]
+    #   interval: 30s
+    #   timeout: 3s
+    #   retries: 3
+    
+    # networks:
+      # - backend
+    # healthcheck:
+    #   test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+    #   interval: 10s
+    #   timeout: 5s
+    #   retries: 5
+
+  # nginx:
+  #   image: nginx:alpine
+  #   ports:
+  #     # couldn't do 80 for both due to needing the port for another class
+  #     - "8080:80"
+  #   volumes:
+  #     - ./nginx.conf:/etc/nginx/nginx.conf:ro
+  #   depends_on:
+  #     web:
+  #       condition: service_healthy
+  #   networks:
+  #     - frontend
+  #   command: /bin/sh -c "rm -f /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'"
+  #   healthcheck:
+  #     test: ["CMD", "nc", "-z", "localhost", "80"]
+  #     interval: 30s
+  #     timeout: 3s
+  #     retries: 3
+
+# networks:
+#   frontend:
+#   backend:
