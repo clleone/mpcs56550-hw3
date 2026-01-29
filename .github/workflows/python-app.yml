@@ -16,6 +16,9 @@ jobs:
   container-job:
 
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: 3W
 
     services:
       mysql:
