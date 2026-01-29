@@ -111,6 +111,9 @@ jobs:
           echo "Coverage threshold met."
       continue-on-error: false
 
+    - name: List files (for debugging)
+      run: ls -R
+
     - name: Upload coverage reports
       uses: actions/upload-artifact@v4
       if: always()
