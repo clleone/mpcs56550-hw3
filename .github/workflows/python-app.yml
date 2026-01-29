@@ -53,7 +53,7 @@ jobs:
           echo "DB_NAME=accounts" >> $GITHUB_ENV
           echo "DB_USER=acctuser" >> $GITHUB_ENV
           echo "DB_PASSWORD=acctpass" >> $GITHUB_ENV
-          echo "SECRET_KEY=test-secret-key-for-ci" >> $GITHUB_ENV
+          echo "SECRET_KEY=forsessions" >> $GITHUB_ENV
 
     - name: Initialize database
       run: |
