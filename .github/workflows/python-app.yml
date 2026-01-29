@@ -86,19 +86,19 @@ jobs:
       continue-on-error: false
 
     - name: Test with pytest
-      run: |
-        echo "Running tests with pytest..."
-        pytest tests/ --doctest-modules --junitxml=junit/test-results.xml --cov=com --cov-report=xml --cov-report=html || {
-          echo "Some tests failed, see output above for details."
-          exit 1
-        }
-        env:
+      env:
           DB_HOST: 127.0.0.1
           DB_PORT: 3306
           DB_NAME: accounts
           DB_USER: acctuser
           DB_PASSWORD: acctpass
           SECRET_KEY: test-secret-key-for-ci
+      run: |
+        echo "Running tests with pytest..."
+        pytest tests/ --doctest-modules --junitxml=junit/test-results.xml --cov=com --cov-report=xml --cov-report=html || {
+          echo "Some tests failed, see output above for details."
+          exit 1
+        }
         echo "Testing successful."
 
     - name: Check coverage threshold
@@ -121,12 +121,12 @@ jobs:
             coverage.xml
 
     - name: Upload pytest test results
+      if: ${{ always() }}
       uses: actions/upload-artifact@v4
       with:
           name: pytest-results-${{ matrix.python-version }}
           path: junit/test-results-${{ matrix.python-version }}.xml
-        # Use always() to always run this step to publish test results when there are test failures
-        if: ${{ always() }}
+      
 
     - name: Build Docker image
       run: |
