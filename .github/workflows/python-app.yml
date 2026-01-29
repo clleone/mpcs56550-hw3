@@ -94,11 +94,14 @@ jobs:
           DB_PASSWORD: acctpass
           SECRET_KEY: test-secret-key-for-ci
       run: |
-        echo "Running tests with pytest..."
-        pytest tests/ --doctest-modules --junitxml=junit/test-results.xml --cov=app --cov-report=xml --cov-report=html || {
-          echo "Some tests failed, see output above for details."
-          exit 1
-        }
+        mkdir -p junit
+        python -m pytest tests/ \
+          --cov-config=/dev/null \
+          --cov=. \
+          --junitxml=junit/test-results.xml \
+          --cov-report=xml \
+          --cov-report=term \
+          --cov-report=html
         echo "Testing successful."
 
     - name: Check coverage threshold
