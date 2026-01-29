@@ -1,0 +1,141 @@
+# This workflow will install Python dependencies, run tests and lint with a single version of Python
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python
+
+name: Python application
+
+on:
+  push:
+    branches: [ "master", "main" ]
+  pull_request:
+    branches: [ "master", "main" ]
+
+permissions:
+  contents: read
+
+jobs:
+  container-job:
+
+    runs-on: ubuntu-latest
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: rootpass
+          MYSQL_DATABASE: accounts
+          MYSQL_USER: acctuser
+          MYSQL_PASSWORD: acctpass
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.11"
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install flake8 black pytest pytest-cov
+
+    - name: Set up environment variables
+      run: |
+          echo "DB_HOST=127.0.0.1" >> $GITHUB_ENV
+          echo "DB_PORT=3306" >> $GITHUB_ENV
+          echo "DB_NAME=accounts" >> $GITHUB_ENV
+          echo "DB_USER=acctuser" >> $GITHUB_ENV
+          echo "DB_PASSWORD=acctpass" >> $GITHUB_ENV
+          echo "SECRET_KEY=test-secret-key-for-ci" >> $GITHUB_ENV
+
+    - name: Initialize database
+      run: |
+        mysql -h 127.0.0.1 -u acctuser -pacctpass accounts < init.sql
+
+    - name: Lint with flake8
+      run: |
+        echo "Linting with flake8..."
+        # stop the build if there are Python syntax errors or undefined names
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics || {
+          echo "flake8 found linting issues."
+          exit 1
+        }
+        # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide 
+        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics || {
+          echo "flake8 found linting issues."
+          exit 1
+        }
+        echo "Linting complete."
+      continue-on-error: false
+
+    - name: Check code formatting with Black
+      run: |
+        echo "Formatting with Black..."
+        black --check --diff . || {
+          echo "Black found formatting issues."
+          exit 1
+        }
+        echo "Formatting complete."
+      continue-on-error: false
+
+    - name: Test with pytest
+      run: |
+        echo "Running tests with pytest..."
+        pytest tests/ --doctest-modules --junitxml=junit/test-results.xml --cov=com --cov-report=xml --cov-report=html || {
+          echo "Some tests failed, see output above for details."
+          exit 1
+        }
+        env:
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
+          DB_NAME: accounts
+          DB_USER: acctuser
+          DB_PASSWORD: acctpass
+          SECRET_KEY: test-secret-key-for-ci
+        echo "Testing successful."
+
+    - name: Check coverage threshold
+      run: |
+          echo "Checking that coverage exceeds 80%..."
+          coverage report --fail-under=80 || {
+            echo "Insufficient coverage."
+            exit 1
+          }
+          echo "Coverage threshold met."
+      continue-on-error: false
+
+    - name: Upload coverage reports
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+          name: coverage-reports
+          path: |
+            htmlcov/
+            coverage.xml
+
+    - name: Upload pytest test results
+      uses: actions/upload-artifact@v4
+      with:
+          name: pytest-results-${{ matrix.python-version }}
+          path: junit/test-results-${{ matrix.python-version }}.xml
+        # Use always() to always run this step to publish test results when there are test failures
+        if: ${{ always() }}
+
+    - name: Build Docker image
+      run: |
+          echo "Building Docker image..."
+          docker build -t flask-app:${{ github.sha }} . || {
+            echo "Failed to build Docker image."
+            exit 1
+          }
+          docker images
+    - name: Verify Docker image
+      run: |
+          docker run --rm flask-app:${{ github.sha }} python -c "import app; print('Build successful!')"
